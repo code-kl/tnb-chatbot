@@ -1,0 +1,1326 @@
+[
+    {
+        "id": "5630d4f1.b25b2c",
+        "type": "tab",
+        "label": "Flow 1"
+    },
+    {
+        "id": "28cbdf6.a96f82",
+        "type": "http in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "url": "/messenger",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 100,
+        "y": 20,
+        "wires": [
+            [
+                "6805662.c776598"
+            ]
+        ]
+    },
+    {
+        "id": "6805662.c776598",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "let VERIFY_TOKEN = \"EAAHd9AtJlWEBABPOdhYRhZAgJnTdj0sg5ZBb3MH7kPUxgWoZBsZA5KvQiexJbONE3J8ZAMAOqj74ATjz1ZAWBzgP80vS5OZAKVOhylzI4v1zkCcZB7fdwyxmIxVpEcZAmoIep9GZCewpzJJxKKTeOFRhdZBegHOFf1XlcN0sn4TIvBIUwZDZD\";\n\n// Parse the query params\nlet mode = msg.payload['hub.mode'];\nlet token = msg.payload['hub.verify_token'];\nlet challenge = msg.payload['hub.challenge'];\n\n// Checks if a token and mode is in the query string of the request\nif (mode && token) {\n\n    // Checks the mode and token sent is correct\n    if (mode === 'subscribe' && token === VERIFY_TOKEN) {\n      \n      // Responds with the challenge token from the request\n      msg.payload = challenge;\n    \n    } else {\n      // Responds with '403 Forbidden' if verify tokens do not match\n      msg.headers.status = 403;\n    }\n\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 250,
+        "y": 20,
+        "wires": [
+            [
+                "dbef6e0f.721a3"
+            ]
+        ]
+    },
+    {
+        "id": "dbef6e0f.721a3",
+        "type": "http response",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 370,
+        "y": 20,
+        "wires": []
+    },
+    {
+        "id": "604f0721.4a2ac8",
+        "type": "http in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "url": "/messenger",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 110,
+        "y": 280,
+        "wires": [
+            [
+                "e832e661.a09558",
+                "51beba56.896e04",
+                "49f8b4f6.2e2e1c"
+            ]
+        ]
+    },
+    {
+        "id": "e832e661.a09558",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "process message",
+        "func": "if (msg.payload.object && 'page' == msg.payload.object) {\n    msg.processAS = 'NOTHING';\n    if (msg.payload.entry){\n        var entry = msg.payload.entry;\n \n        for (var i = 0; i < entry.length; i++) {\n            //console.log(myArray[j].x);\n            var pageID = entry[i].id;\n            var timeOfEvent = entry[i].time;\n            var messaging = entry[i].messaging\n            for (var j =0; j < messaging.length; j++) {\n                if (messaging[j].optin) {\n                    msg.processAS = 'AUTHENTICATION';     \n                } else if (messaging[j].message) {\n                  if(messaging[j].message.attachments) {\n                      if(messaging[j].message.attachments[0].type == \"location\") {\n                          msg.processAS = 'LOCATION';\n                      } else if(messaging[j].message.attachments[0].type == \"image\") {\n                          msg.processAS = 'IMAGE'\n                          msg.image = messaging[j].message.attachments[0].payload.url\n                      } else if(messaging[j].message.attachments[0] && messaging[j].message.attachments[0].type) {\n                          msg.processAS = messaging[j].message.attachments[0].type.toUpperCase()\n                      } else {\n                          msg.processAS = 'OTHER';\n                      }\n                  } else {\n                      msg.processAS = 'MESSAGE';\n                  }\n                } else if (messaging[j].delivery) {\n                    msg.processAS = 'DELIVERY';\n                } else if (messaging[j].postback) {\n                    msg.processAS = 'POSTBACK';\n                }\n                msg.messagingEvent = messaging[j];\n                node.send([msg,null]);               \n            }\n        }\n    }\n}\nreturn [null,msg];",
+        "outputs": "2",
+        "noerr": 0,
+        "x": 330,
+        "y": 280,
+        "wires": [
+            [
+                "bcdd177.058ebe8"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "bcdd177.058ebe8",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "check message type",
+        "property": "processAS",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "MESSAGE",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AUDIO",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "LOCATION",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "IMAGE",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 5,
+        "x": 540,
+        "y": 280,
+        "wires": [
+            [
+                "71572eaa.9b1ee"
+            ],
+            [
+                "18f33e64.720e12"
+            ],
+            [
+                "5c8b80cc.f8abd"
+            ],
+            [
+                "858f9f83.776a7",
+                "958212c5.63a7f"
+            ],
+            [
+                "914665de.05b038"
+            ]
+        ]
+    },
+    {
+        "id": "71572eaa.9b1ee",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Tone Analyzer",
+        "func": "msg.facebookevent = { sender : msg.messagingEvent.sender }\n//msg.payload = \"You said \" + msg.messagingEvent.message.text\n\nmsg.contextId = msg.messagingEvent.sender.id;\nmsg.user = msg.contextId;\n\nvar context = global.get(msg.contextId) || {};\nmsg.payload = msg.messagingEvent.message.text\nif (msg.payload.toLowerCase() === \"reset\") {\n    context = {};\n}\ncontext.name=\"still testing\";\nif (msg.params)\n    msg.params.context = context;\nelse\n    msg.params= {context:context};\n    \nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 760,
+        "y": 240,
+        "wires": [
+            [
+                "a39981b7.74eee"
+            ]
+        ]
+    },
+    {
+        "id": "51beba56.896e04",
+        "type": "http response",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "statusCode": "200",
+        "headers": {},
+        "x": 300,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "6a6e4201.32d1ac",
+        "type": "ffmpeg-conversion",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "format": "ogg",
+        "audiochannels": "mono",
+        "x": 750,
+        "y": 320,
+        "wires": [
+            [
+                "2989253a.63090a"
+            ]
+        ]
+    },
+    {
+        "id": "18f33e64.720e12",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "convert to ogg",
+        "func": "msg.payload = msg.messagingEvent.message.attachments[0].payload.url;\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 760,
+        "y": 280,
+        "wires": [
+            [
+                "6a6e4201.32d1ac"
+            ]
+        ]
+    },
+    {
+        "id": "2989253a.63090a",
+        "type": "watson-speech-to-text",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "alternatives": 1,
+        "speakerlabels": true,
+        "smartformatting": false,
+        "lang": "en-US",
+        "langhidden": "en-US",
+        "langcustom": "NoCustomisationSetting",
+        "langcustomhidden": "",
+        "band": "NarrowbandModel",
+        "bandhidden": "NarrowbandModel",
+        "password": "6iKOvlvsfAJM",
+        "payload-response": true,
+        "default-endpoint": true,
+        "service-endpoint": "https://stream.watsonplatform.net/speech-to-text/api",
+        "x": 760,
+        "y": 360,
+        "wires": [
+            [
+                "e3bfc123.ec0c1"
+            ]
+        ]
+    },
+    {
+        "id": "e3bfc123.ec0c1",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "prepare to conversation",
+        "func": "msg.facebookevent = { sender : msg.messagingEvent.sender }\nmsg.isSpeech = true;\nmsg.contextId = msg.messagingEvent.sender.id;\nmsg.user = msg.contextId;\n\nvar context = global.get(msg.contextId) || {};\nif (msg.payload.toLowerCase() === \"reset\") {\n    context = {};\n}\ncontext.name=\"still testing\";\nif (msg.params)\n    msg.params.context = context;\nelse\n    msg.params= {context:context};\n    \nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 730,
+        "y": 400,
+        "wires": [
+            [
+                "51ab4672.359288"
+            ]
+        ]
+    },
+    {
+        "id": "a39981b7.74eee",
+        "type": "watson-tone-analyzer-v3",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "tones": "all",
+        "sentences": "false",
+        "contentType": "false",
+        "tone-method": "generalTone",
+        "interface-version": "2017-09-21",
+        "inputlang": "en",
+        "default-endpoint": true,
+        "service-endpoint": "https://gateway.watsonplatform.net/tone-analyzer/api",
+        "x": 760,
+        "y": 200,
+        "wires": [
+            [
+                "b1d111db.bc0f8"
+            ]
+        ]
+    },
+    {
+        "id": "b1d111db.bc0f8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "Tone Analyzer Parser",
+        "func": "if (msg.response && msg.response.document_tone && msg.response.document_tone.tones && \n        msg.response.document_tone.tones[0] && \n        msg.response.document_tone.tones[0]) {\n    var tone = msg.response.document_tone.tones[0];\n    if (tone.tone_id == \"anger\") {\n        msg.params.context.anger = tone.score\n    } \n}\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 740,
+        "y": 160,
+        "wires": [
+            [
+                "d5b607bc.031468"
+            ]
+        ]
+    },
+    {
+        "id": "20d32296.fc1a1e",
+        "type": "xml",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "attr": "",
+        "chr": "",
+        "x": 220,
+        "y": 520,
+        "wires": [
+            [
+                "92212bef.6de708"
+            ]
+        ]
+    },
+    {
+        "id": "e0f09f30.cb69f",
+        "type": "inject",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "x": 80,
+        "y": 440,
+        "wires": [
+            [
+                "68882cd1.916b44"
+            ]
+        ]
+    },
+    {
+        "id": "68882cd1.916b44",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "url": "https://openwhisk.ng.bluemix.net/api/v1/web/ecodadmi%40us.ibm.com_saiman-dev/default/getCustomer.html?accountNo=220282279500",
+        "tls": "",
+        "x": 240,
+        "y": 440,
+        "wires": [
+            [
+                "20d32296.fc1a1e"
+            ]
+        ]
+    },
+    {
+        "id": "92212bef.6de708",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 390,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "fa8c9721.996a98",
+        "type": "cloudant out",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "cloudant": "",
+        "database": "chatlogs",
+        "service": "tnb-cloudantNoSQLDB",
+        "payonly": true,
+        "operation": "insert",
+        "x": 80,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "49f8b4f6.2e2e1c",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "toCloudant",
+        "func": "msg.payload.source = \"messenger\";\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 90,
+        "y": 320,
+        "wires": [
+            [
+                "fa8c9721.996a98"
+            ]
+        ]
+    },
+    {
+        "id": "51ab4672.359288",
+        "type": "watson-conversation-v1",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "workspaceid": "87408d27-ba7b-464d-9c32-d0a6541e1efb",
+        "multiuser": true,
+        "context": true,
+        "empty-payload": true,
+        "default-endpoint": true,
+        "service-endpoint": "https://gateway.watsonplatform.net/conversation/api",
+        "x": 990,
+        "y": 280,
+        "wires": [
+            [
+                "de4152c9.cf5ce"
+            ]
+        ]
+    },
+    {
+        "id": "de4152c9.cf5ce",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "conversation parser",
+        "func": "msg.context = msg.payload.context;\n\nglobal.set(msg.contextId, msg.context);\n\nmsg.action = msg.payload.output.action;\n\nvar inputs = global.get(msg.contextId + \"_chats\") || [];\nmsg.input = msg.payload.input.text;\ninputs.push(msg.input);\n\nglobal.set(msg.contextId + \"_chats\", inputs);\n\nmsg.ms = msg.payload.output.ms || msg.payload.output.text.join();\nmsg.zh = msg.payload.output.zh || msg.payload.output.text.join();\nmsg.payload = msg.payload.output.text.join();\n\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 1180,
+        "y": 280,
+        "wires": [
+            [
+                "8c0216e8.2b9a38",
+                "b78a0b8c.2fdae8"
+            ]
+        ]
+    },
+    {
+        "id": "2e4a1bf.5a272e4",
+        "type": "watson-text-to-speech",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "lang": "en-US",
+        "langhidden": "en-US",
+        "langcustom": "NoCustomisationSetting",
+        "langcustomhidden": "",
+        "voice": "en-US_AllisonVoice",
+        "voicehidden": "",
+        "format": "audio/mp3",
+        "password": "zWxfAAGNUrhf",
+        "payload-response": true,
+        "default-endpoint": true,
+        "service-endpoint": "https://stream.watsonplatform.net/text-to-speech/api",
+        "x": 420,
+        "y": 60,
+        "wires": [
+            [
+                "bccfa538.9605a8"
+            ]
+        ]
+    },
+    {
+        "id": "8dbbd3fe.7e2e5",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "isSpeech",
+        "property": "isSpeech",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 2,
+        "x": 1880,
+        "y": 520,
+        "wires": [
+            [
+                "ada07445.d88ec8"
+            ],
+            [
+                "c83d18c5.275f98"
+            ]
+        ]
+    },
+    {
+        "id": "ada07445.d88ec8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "Speech",
+        "func": "\nmsg.payload = {\n    \"messaging_type\": \"RESPONSE\",\n    \"recipient\": {\n        \"id\": msg.user\n    },\n    \"message\": {\n        \"attachment\": {\n            \"type\": \"audio\",\n            \"payload\": {\n                \"url\" : \"https://tnb.mybluemix.net/speech.mp3?text=\" + encodeURIComponent(msg.payload)\n            }\n        }\n    }\n}\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 2040,
+        "y": 480,
+        "wires": [
+            [
+                "5c570c9e.a08f04"
+            ]
+        ]
+    },
+    {
+        "id": "5c570c9e.a08f04",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Messenger",
+        "method": "POST",
+        "ret": "obj",
+        "url": "https://graph.facebook.com/v2.6/me/messages?access_token=EAAHd9AtJlWEBABPOdhYRhZAgJnTdj0sg5ZBb3MH7kPUxgWoZBsZA5KvQiexJbONE3J8ZAMAOqj74ATjz1ZAWBzgP80vS5OZAKVOhylzI4v1zkCcZB7fdwyxmIxVpEcZAmoIep9GZCewpzJJxKKTeOFRhdZBegHOFf1XlcN0sn4TIvBIUwZDZD",
+        "tls": "",
+        "x": 2340,
+        "y": 240,
+        "wires": [
+            [
+                "2fdf3ff.c186ec"
+            ]
+        ]
+    },
+    {
+        "id": "f28cc43.7d69a38",
+        "type": "http in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "url": "/speech.mp3",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 110,
+        "y": 60,
+        "wires": [
+            [
+                "fb8d62d3.a532d"
+            ]
+        ]
+    },
+    {
+        "id": "bccfa538.9605a8",
+        "type": "http response",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "statusCode": "",
+        "headers": {
+            "Content-Type": "audio/mp3"
+        },
+        "x": 570,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "fb8d62d3.a532d",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "msg.payload = msg.payload.text || \"\";\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 270,
+        "y": 60,
+        "wires": [
+            [
+                "2e4a1bf.5a272e4"
+            ]
+        ]
+    },
+    {
+        "id": "c83d18c5.275f98",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "Text",
+        "func": "\nmsg.payload = {\n    \"messaging_type\": \"RESPONSE\",\n    \"recipient\": {\n        \"id\": msg.user\n    },\n    \"message\": {\n        \"text\": msg.payload\n    }\n}\n\nif (msg.context) {\n    if (!msg.FAQ && msg.context.language == \"malay\")\n        msg.payload.message.text = msg.ms || msg.payload.message.text;\n    if (!msg.FAQ && msg.context.language == \"chinese\")\n        msg.payload.message.text = msg.zh || msg.payload.message.text;\n}\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 2030,
+        "y": 560,
+        "wires": [
+            [
+                "5c570c9e.a08f04"
+            ]
+        ]
+    },
+    {
+        "id": "8c0216e8.2b9a38",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "Action",
+        "property": "action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "getStores",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "getFAQ",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "getAccountBalance",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "getPaymentHistory",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "getBillHistory",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "linkAccount",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 7,
+        "x": 1350,
+        "y": 280,
+        "wires": [
+            [
+                "4cc2bc2e.ae7884"
+            ],
+            [
+                "8c150f61.d8748"
+            ],
+            [
+                "428362e2.5f828c"
+            ],
+            [
+                "cc0d4609.bbbb28"
+            ],
+            [
+                "68da4f18.99917"
+            ],
+            [
+                "962db971.4d78e8"
+            ],
+            [
+                "d0800a.848dbff8"
+            ]
+        ]
+    },
+    {
+        "id": "5c8b80cc.f8abd",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "latlng",
+        "func": "var coordinates = msg.messagingEvent.message.attachments[0].payload.coordinates;\n\nmsg.facebookevent = { sender : msg.messagingEvent.sender }\nmsg.contextId = msg.messagingEvent.sender.id;\nmsg.user = msg.contextId;\n\nvar context = global.get(msg.contextId) || {};\ncontext.name=\"still testing\";\nif (msg.params)\n    msg.params.context = context;\nelse\n    msg.params= {context:context};\n    \nmsg.params.context.latlng = coordinates.lat + \",\" + coordinates.long\nmsg.payload = \"find store\"\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 790,
+        "y": 440,
+        "wires": [
+            [
+                "51ab4672.359288"
+            ]
+        ]
+    },
+    {
+        "id": "fc86478b.bcd328",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "getStores",
+        "method": "POST",
+        "ret": "obj",
+        "url": "https://openwhisk.ng.bluemix.net/api/v1/web/ecodadmi%40us.ibm.com_saiman-dev/default/tnb-stores.json",
+        "tls": "",
+        "x": 1680,
+        "y": 160,
+        "wires": [
+            [
+                "bde8adc1.e4cc3"
+            ]
+        ]
+    },
+    {
+        "id": "10dff20f.88370e",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "getStores",
+        "func": "msg.payload = {\n    latlng: msg.context.latlng,\n    location: msg.context.location\n}\n\ndelete(msg.context.latlng)\ndelete(msg.context.location)\ndelete(msg.context.action)\n\nglobal.set(msg.contextId, msg.context);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1680,
+        "y": 120,
+        "wires": [
+            [
+                "fc86478b.bcd328"
+            ]
+        ]
+    },
+    {
+        "id": "bde8adc1.e4cc3",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "send store location",
+        "func": "var store = msg.payload.stores[0];\n\nmsg.payload = [{\n    \"messaging_type\": \"RESPONSE\",\n    \"recipient\": {\n        \"id\": msg.user\n    },\n    \"message\": {\n        \"attachment\": {\n            \"type\": \"template\",\n            \"payload\": {\n                \"template_type\": \"generic\",\n                \"elements\": [{\n                    \"title\": store.name  + \" (\" + store.distance + \"km away)\",\n                    \"subtitle\": store.address.replace(/<br\\s+\\/>/g,\" \").replace(/<br\\s+>/g,\" \"),\n                    \"image_url\": \"https://maps.googleapis.com/maps/api/staticmap?key=\" + \"AIzaSyBrLxQsZXTNzNQaaEtXpOOQ3YArIoR43uw\" + \"&markers=color:red|label:B|\"+store.lat+\",\"+store.lng+\"&size=360x360&zoom=13\"\n                }]\n            }\n        }\n    }\n},{\n    \"messaging_type\": \"RESPONSE\",\n    \"recipient\": {\n        \"id\": msg.user\n    },\n    \"message\": {\n        \"text\": \"https://www.google.com/maps/search/?api=1&query=\" + store.lat + \",\" + store.lng\n    }\n}]\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1650,
+        "y": 200,
+        "wires": [
+            [
+                "8a283182.fc72"
+            ]
+        ]
+    },
+    {
+        "id": "8a283182.fc72",
+        "type": "split",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 1690,
+        "y": 240,
+        "wires": [
+            [
+                "5c570c9e.a08f04"
+            ]
+        ]
+    },
+    {
+        "id": "d5b607bc.031468",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "check action",
+        "property": "params.context.action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "getLocation",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 2,
+        "x": 770,
+        "y": 120,
+        "wires": [
+            [
+                "67834992.c4b9a8"
+            ],
+            [
+                "188008b.e6a8ef7"
+            ]
+        ]
+    },
+    {
+        "id": "67834992.c4b9a8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "set location",
+        "func": "msg.context = msg.params.context\nmsg.context.location = msg.payload\n\nglobal.set(msg.contextId, msg.context);\n\nmsg.params.context = msg.context;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 950,
+        "y": 100,
+        "wires": [
+            [
+                "51ab4672.359288"
+            ]
+        ]
+    },
+    {
+        "id": "8c150f61.d8748",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "FAQ",
+        "func": "msg.discoveryparams = {};\nmsg.discoveryparams.query = msg.input || msg.payload || \"\";\n\nmsg.discoveryparams.passages = true\nmsg.discoveryparams.passages.characters = 2000;\n\nmsg.isFAQ;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1690,
+        "y": 280,
+        "wires": [
+            [
+                "4470bf27.89655"
+            ]
+        ]
+    },
+    {
+        "id": "4470bf27.89655",
+        "type": "watson-discovery-v1",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "environmentname": "",
+        "environment_id": "171b3065-875c-4e46-9357-b66c9b78a34c",
+        "collection_id": "a3dbb423-e843-45c4-a4ed-ff0a4a943a6b",
+        "configurationname": "",
+        "configuration_id": "",
+        "collection_name": "",
+        "count": "1",
+        "passages": true,
+        "nlp_query": true,
+        "query": "",
+        "filter": "",
+        "aggregation": "",
+        "return": "",
+        "description": "",
+        "size": 0,
+        "discovery-method": "query",
+        "default-endpoint": true,
+        "service-endpoint": "",
+        "x": 1680,
+        "y": 320,
+        "wires": [
+            [
+                "a5980349.a04c2"
+            ]
+        ]
+    },
+    {
+        "id": "a5980349.a04c2",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "parse Discovery",
+        "func": "var results = msg.search_results;\nvar output = \"\";\nif(results && results.passages.length > 0) {\n    var result = results.passages[0].passage_text;\n    // output = result.passage_text;\n    // \"a\\nb\\r\\nc\".split(/\\r?\\n/)\n    var tokens = result.split(/\\r?\\n/);\n    var questionArr = [];\n    for(var i=0; i<tokens.length; i++) {\n        var token = tokens[i];\n        if(token.indexOf('?')>=0)\n            questionArr.push(i);\n    }\n    //if only 1 question mark, remove the index and the remaining of question mark\n    if(questionArr.length == 1) {\n        if(questionArr[0] == (tokens.length - 1)) {\n            for(var i=0; i<questionArr[0]; i++) {\n                if(tokens[i].trim() !== '') {\n                    output += tokens[i] + '\\n';\n                }\n            }\n        }\n        else {\n            for(var i=questionArr[0]+1; i<tokens.length; i++) {\n                if(tokens[i].trim() !== '') {\n                    output += tokens[i] + '\\n';\n                }\n            }\n        }\n    }\n    //if has 2 or more question mark, take the partial content contained within first 2 question marks\n    else if(questionArr.length >= 2) {\n        if(questionArr[1] == (tokens.length - 1)) {\n            for(var i=questionArr[0]+1; i<questionArr[1]; i++) {\n                if(tokens[i].trim() !== '') {\n                    output += tokens[i] + '\\n';\n                }\n            }\n        }\n        else {\n            for(var i=questionArr[1]+1; i<tokens.length; i++) {\n                if(tokens[i].trim() !== '') {\n                    output += tokens[i] + '\\n';\n                }\n            }\n        }\n    }\n}\n\nmsg.payload = output.replace(/<.*?>/g, \" \") || 'Sorry I dont have answer for this. Plese write \"Contact Agent\" for me to connect you to our next available live agent.';\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1660,
+        "y": 360,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "20f7e9a9.724be6",
+        "type": "http in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "url": "/slack",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 2050,
+        "y": 100,
+        "wires": [
+            [
+                "f6f23b2.dd5eec8"
+            ]
+        ]
+    },
+    {
+        "id": "f6f23b2.dd5eec8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "from Agent",
+        "func": "var agent = msg.payload.user_name;\nvar text = msg.payload.text.match(/\\|(.*)/)[1].trim();\nvar userId = msg.payload.text.match(/tnb\\:(.*?)\\|/)[1].trim();\n\nvar text_ = text.toLowerCase();\nif (text_ == \"close\" || text_ == \"exit\" || text_ == \"quit\") {\n    var context = global.get(userId) || {};\n    delete(context.agent);\n    global.set(userId, context);\n    text = \"Thank you for using our chat services and have a nice day\"\n}\n\nmsg.payload = {\n    \"messaging_type\": \"RESPONSE\",\n    \"recipient\": {\n        \"id\": userId\n    },\n    \"message\": {\n        \"text\": \"[\" + agent + \"] \" + text\n    }\n}\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 2050,
+        "y": 140,
+        "wires": [
+            [
+                "5c570c9e.a08f04"
+            ]
+        ]
+    },
+    {
+        "id": "6da0e385.f11bbc",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "url": "https://hooks.slack.com/services/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",
+        "tls": "",
+        "x": 1270,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "73ff3d16.7a3314",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Slack",
+        "func": "var inputs = global.get(msg.contextId + \"_chats\") || [];\n\nif (inputs.length > 0)\n    msg.payload = {\n        text: msg.user + \"|=======\\n\" + inputs.join(\"\\n\") + \"\\n=======\"\n    }\nelse\n    msg.payload = {\n        text: msg.user + \"| \" + msg.payload\n    }\n\nglobal.set(msg.contextId + \"_chats\", []);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1120,
+        "y": 140,
+        "wires": [
+            [
+                "6da0e385.f11bbc"
+            ]
+        ]
+    },
+    {
+        "id": "188008b.e6a8ef7",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Agent",
+        "property": "params.context.agent",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 2,
+        "x": 940,
+        "y": 140,
+        "wires": [
+            [
+                "73ff3d16.7a3314"
+            ],
+            [
+                "51ab4672.359288"
+            ]
+        ]
+    },
+    {
+        "id": "c8b9533d.88ad7",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Slack",
+        "func": "var inputs = global.get(msg.contextId + \"_chats\") || [];\n\nif (inputs.length > 0)\n    msg.payload = {\n        text: \"Incoming request from messenger: \" + msg.user + \"\\n=====================\\n\" + inputs.join(\"\\n\") + \"\\n=====================\"\n    }\nelse\n    msg.payload = {\n        text: msg.user + \"| \" + msg.payload\n    }\n\nglobal.set(msg.contextId + \"_chats\", []);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 2500,
+        "y": 280,
+        "wires": [
+            [
+                "cdd15b1f.4b1d88"
+            ]
+        ]
+    },
+    {
+        "id": "cdd15b1f.4b1d88",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Slack",
+        "method": "POST",
+        "ret": "txt",
+        "url": "https://hooks.slack.com/services/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",
+        "tls": "",
+        "x": 2500,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2fdf3ff.c186ec",
+        "type": "switch",
+        "z": "5630d4f1.b25b2c",
+        "name": "to Agent",
+        "property": "action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "agent",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 1,
+        "x": 2500,
+        "y": 240,
+        "wires": [
+            [
+                "c8b9533d.88ad7"
+            ]
+        ]
+    },
+    {
+        "id": "4cc2bc2e.ae7884",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1530,
+        "y": 120,
+        "wires": [
+            [
+                "10dff20f.88370e"
+            ]
+        ]
+    },
+    {
+        "id": "d0800a.848dbff8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1690,
+        "y": 880,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "428362e2.5f828c",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "getAccountBalance",
+        "func": "msg.payload = msg.context.accountNo\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1650,
+        "y": 400,
+        "wires": [
+            [
+                "ec8b6f8.a54119"
+            ]
+        ]
+    },
+    {
+        "id": "57e3a5fe.5433bc",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "var accountNo = msg.payload.accountNo;\nvar bill = msg.payload.bills[0]\nvar payment = msg.payload.payments[0]\n\nvar content = \"Account #: \" + accountNo + \"\\n\\n\";\ncontent += \"Latest Bill Info:\\n\";\ncontent += \"- Amount: RM \" + bill.Amount + \"\\n\";\ncontent += \"- Date: \" + bill.BillingDate + \"\\n\\n\";\ncontent += \"Last Payment Info:\\n\";\ncontent += \"- Amount: RM \" + payment.Amount + \"\\n\";\ncontent += \"- Date: \" + payment.PaymentDate + \"\\n\\n\";\ncontent += \"Outstanding Balance: RM \";\n\nif (new Date(payment.PaymentDate).getTime() > new Date(bill.BillingDate).getTime())\n    content += (bill.Amount - payment.Amount);\nelse\n    content += bill.Amount;\n\nmsg.payload = {\n    type : 'message',\n    chatId : msg.originalMessage.chat.id,\n    content : content\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1280,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ec8b6f8.a54119",
+        "type": "cloudant in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "cloudant": "",
+        "database": "customer",
+        "service": "tnb-cloudantNoSQLDB",
+        "search": "_id_",
+        "design": "",
+        "index": "",
+        "x": 1680,
+        "y": 440,
+        "wires": [
+            [
+                "83197528.956f18"
+            ]
+        ]
+    },
+    {
+        "id": "83197528.956f18",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "extract info",
+        "func": "var balance = msg.payload.billTotalPayable;\nvar due = msg.payload.dueDate;\ndue = due.substring(6) + \"/\" + due.substring(4,6) + \"/\" + due.substring(0,4)\n\nmsg.payload = \"Your have an outstanding balance of RM \" + balance + \" which is due on \" + due\nmsg.ms = \"Anda mempunyai baki tertunggak sebanyak RM \" + balance + \" yang perlu dibayar sebelum \" + due\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 480,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "68da4f18.99917",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "getBillHistory",
+        "func": "msg.payload = msg.context.accountNo\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 640,
+        "wires": [
+            [
+                "1df012fd.e924dd"
+            ]
+        ]
+    },
+    {
+        "id": "1df012fd.e924dd",
+        "type": "cloudant in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "cloudant": "",
+        "database": "customer",
+        "service": "tnb-cloudantNoSQLDB",
+        "search": "_id_",
+        "design": "",
+        "index": "",
+        "x": 1680,
+        "y": 680,
+        "wires": [
+            [
+                "ef0c0599.cbf0e8"
+            ]
+        ]
+    },
+    {
+        "id": "ef0c0599.cbf0e8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "extract bills",
+        "func": "var bills = msg.payload.bills;\n\nvar text = \"\";\nfor (var i in bills) {\n    text += bills[i].BillingDate + \" : RM \" + bills[i].Amount + \"\\n\"\n}\n\nmsg.payload = text\nmsg.ms = \"\"\nmsg.zh = \"\"\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 720,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "cc0d4609.bbbb28",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "getPaymentHistory",
+        "func": "msg.payload = msg.context.accountNo\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1650,
+        "y": 520,
+        "wires": [
+            [
+                "61ee3af4.c7c424"
+            ]
+        ]
+    },
+    {
+        "id": "61ee3af4.c7c424",
+        "type": "cloudant in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "cloudant": "",
+        "database": "customer",
+        "service": "tnb-cloudantNoSQLDB",
+        "search": "_id_",
+        "design": "",
+        "index": "",
+        "x": 1680,
+        "y": 560,
+        "wires": [
+            [
+                "1cab3253.5c51de"
+            ]
+        ]
+    },
+    {
+        "id": "1cab3253.5c51de",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "extract info",
+        "func": "var payments = msg.payload.payments;\n\nvar text = \"\";\nfor (var i in payments) {\n    text += payments[i].PaymentDate + \" : RM \" + payments[i].Amount + \"\\n\"\n}\n\nmsg.payload = text\nmsg.ms = \"\"\nmsg.zh = \"\"\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 600,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5",
+                "ea72dbe.be29328"
+            ]
+        ]
+    },
+    {
+        "id": "b78a0b8c.2fdae8",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "action",
+        "x": 1220,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "ea72dbe.be29328",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 2070,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "6106864d.f776a8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "set to profile",
+        "func": "var context = global.get(msg.contextId) || {};\n\ncontext.profile = msg.payload;\n\nglobal.set(msg.contextId, context);\n\nmsg.payload = msg.ms || msg.zh || msg.text;\n\nmsg.payload = \"Hi \" + context.profile.accountName + \"! \" + msg.payload;\ndelete(msg.ms)\ndelete(msg.zh)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 840,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "35580e27.abb082",
+        "type": "cloudant in",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "cloudant": "",
+        "database": "customer",
+        "service": "tnb-cloudantNoSQLDB",
+        "search": "_id_",
+        "design": "",
+        "index": "",
+        "x": 1680,
+        "y": 800,
+        "wires": [
+            [
+                "6106864d.f776a8"
+            ]
+        ]
+    },
+    {
+        "id": "962db971.4d78e8",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "linkAccount",
+        "func": "msg.text = msg.payload;\nmsg.payload = msg.context.accountNo\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1670,
+        "y": 760,
+        "wires": [
+            [
+                "35580e27.abb082"
+            ]
+        ]
+    },
+    {
+        "id": "914665de.05b038",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 550,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "d22eb3cb.b3855",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "if (msg.payload.err) {\n    msg.payload = msg.payload.err;\n    return msg;\n}\n\nvar accountNo = msg.payload.accountNo;\nvar bill = msg.payload.bills[0]\nvar payment = msg.payload.payments[0]\n\nvar content = \"Account #: \" + accountNo + \"\\n\\n\";\ncontent += \"Latest Bill Info:\\n\";\ncontent += \"- Amount: RM \" + bill.Amount + \"\\n\";\ncontent += \"- Date: \" + bill.BillingDate + \"\\n\\n\";\ncontent += \"Last Payment Info:\\n\";\ncontent += \"- Amount: RM \" + payment.Amount + \"\\n\";\ncontent += \"- Date: \" + payment.PaymentDate + \"\\n\\n\";\ncontent += \"Outstanding Balance: RM \";\n\nif (new Date(payment.PaymentDate).getTime() > new Date(bill.BillingDate).getTime())\n    content += (bill.Amount - payment.Amount);\nelse\n    content += bill.Amount;\n\nmsg.payload = content\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1330,
+        "y": 620,
+        "wires": [
+            [
+                "8dbbd3fe.7e2e5"
+            ]
+        ]
+    },
+    {
+        "id": "b9174941.e21288",
+        "type": "http request",
+        "z": "5630d4f1.b25b2c",
+        "name": "Scan Barcode",
+        "method": "POST",
+        "ret": "obj",
+        "url": "https://openwhisk.ng.bluemix.net/api/v1/web/syahrul.aiman@my.ibm.com_dev/default/barcode-tnb.json",
+        "tls": "",
+        "x": 690,
+        "y": 620,
+        "wires": [
+            [
+                "d22eb3cb.b3855",
+                "d5519c37.535fe"
+            ]
+        ]
+    },
+    {
+        "id": "858f9f83.776a7",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "image",
+        "x": 810,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "d5519c37.535fe",
+        "type": "debug",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 870,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "958212c5.63a7f",
+        "type": "function",
+        "z": "5630d4f1.b25b2c",
+        "name": "",
+        "func": "msg.payload = {\n    url : msg.image\n}\nmsg.user = msg.messagingEvent.sender.id\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 610,
+        "y": 480,
+        "wires": [
+            [
+                "b9174941.e21288"
+            ]
+        ]
+    }
+]
